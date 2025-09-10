@@ -22,35 +22,52 @@ public final class GPayPaymentHandler: NSObject, RazorpayPaymentCompletionProtoc
 
     private var razorpay: RazorpayCheckout!
 
-    public init(key: String) {
+    public override init() {
         super.init()
-        razorpay = RazorpayCheckout.initWithKey(key, andDelegate: self)
     }
+    
+    public func startPayment(with model: GPayPaymentModel) {
+        
+        razorpay = RazorpayCheckout.initWithKey(model.key, andDelegate: self)
 
-    public func startPayment(price: Int) {
         let options: [String: Any] = [
-            "amount": "\(price * 100)",
-            "currency": "INR",
-            "description": "Test Payment",
-            "name": "GPay By Razorpay",
-            "prefill": ["contact": "1234567890", "email": "test@example.com"],
-            "theme": ["color": "#FAA4BD"],
-            "method": ["upi": true]
+            GPayPaymentConstants.amount: model.amount * 100,
+            GPayPaymentConstants.currency: model.currency,
+            GPayPaymentConstants.description: model.description ?? "",
+            GPayPaymentConstants.name: model.name ?? "",
+            GPayPaymentConstants.profile: [
+                GPayPaymentConstants.contact: model.contact ?? "",
+                GPayPaymentConstants.email: model.email ?? ""
+            ],
+            GPayPaymentConstants.theme: [
+                GPayPaymentConstants.color: model.themeColor
+            ],
+            GPayPaymentConstants.method: [
+                GPayPaymentConstants.upi: model.enableUPI,
+                GPayPaymentConstants.card: model.enableCard,
+                GPayPaymentConstants.netbanking: model.enableNetbanking,
+                GPayPaymentConstants.wallet: model.enableWallet,
+                GPayPaymentConstants.emi: model.enableEMI,
+                GPayPaymentConstants.paylater: model.enablePayLater
+            ],
+            GPayPaymentConstants.retry: [
+                GPayPaymentConstants.enabled: model.retryEnabled,
+                GPayPaymentConstants.maxCount: model.retryMaxCount
+            ]
         ]
         razorpay.open(options)
     }
-
+  
     // MARK: - RazorpayPaymentCompletionProtocol
     nonisolated
     public func onPaymentError(_ code: Int32, description str: String) {
         DispatchQueue.main.async {
-            self.isPaymentFail = true
+            self.isPaymentFail = false
             self.paymentFailCode = Int(code)
             self.paymentFailReason = str
             self.onPaymentErrorHandler?(self.paymentFailCode ?? 0, self.paymentFailReason ?? "", self.isPaymentFail)
         }
     }
-
 
     nonisolated
     public func onPaymentSuccess(_ payment_id: String) {
